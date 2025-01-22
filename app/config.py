@@ -39,7 +39,6 @@ class Settings(BaseSettings):
     logger.info(f'Current version: {version}')
     logger.info(f'Getting service configuration...')
 
-    default_language: Final = 'ru'
     use_deep_speed: bool = False
     use_cpu: bool = False
     current_model = "Roxy_Migurdia_coqui_XTTS"
