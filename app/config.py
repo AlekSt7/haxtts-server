@@ -1,83 +1,79 @@
-import json
 import logging
 import os
+from typing import Final
+
 import torch
 
 from pydantic import BaseSettings
 
 logger = logging.getLogger('uvicorn')
-models_directory = './models/'
-audios_directory = './audios/'
-version = '2.0.0'
+models_directory: Final = './models/'
+speakers_directory: Final = './speakers/'
+audios_directory: Final = './audios/'
+voice_extension: Final = '.wav'
+version = '1.0.0'
 
+def scan_files_for_names(directory, extensions):
+    if not os.path.exists(directory):
+        raise RuntimeError(f"Directory '{directory}' not found.")
+
+    matching_files = []
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if any(file.endswith(ext) for ext in extensions):
+                # Получаем имя файла без расширения
+                file_name_without_extension = os.path.splitext(file)[0]
+                matching_files.append(file_name_without_extension)
+    return matching_files
+
+
+def get_subdirectories(directory):
+    if not os.path.exists(directory):
+        raise RuntimeError(f"Directory '{directory}' not found.")
+
+    all_entries = os.listdir(directory)
+    subdirectories = [entry for entry in all_entries if os.path.isdir(os.path.join(directory, entry))]
+    return subdirectories
 
 class Settings(BaseSettings):
-    number_of_threads: int = 4
-    language: str = 'ru'
-    sample_rate: int = 48000
-    sox_param: str = ''
-    ha_fix: bool = False
+    logger.info(f'Current version: {version}')
+    logger.info(f'Getting service configuration...')
 
-    silero_settings = {
-        'ru': {
-            'model_link': 'https://models.silero.ai/models/tts/ru/v4_ru.pt',
-            'model_name': 'ru_model.pt',
-            'speakers': [
-                'aidar', 'baya', 'kseniya', 'xenia', 'eugene', 'random'
-            ]
-        },
-        'uk': {
-            'model_link': 'https://models.silero.ai/models/tts/ua/v3_ua.pt',
-            'model_name': 'uk_model.pt',
-            'speakers': [
-                'mykyta', 'random'
-            ]
-        },
-        'multi': {
-            'model_link': 'https://models.silero.ai/models/tts/multi/v2_multi.pt',
-            'model_name': 'multi_model.pt',
-            'speakers': [
-                'irina', 'random'
-            ]
-        }
-    }
+    default_language: Final = 'ru'
+    use_deep_speed: bool = False
+    use_cpu: bool = False
+    current_model = "Roxy_Migurdia_coqui_XTTS"
+
+    xtts_models = []
+    xtts_speakers = []
 
     class Config:
         env_file = ".env"
 
+settings = Settings()
 
 def settings_checker():
-    settings = Settings()
-
-    if settings.number_of_threads <= 0:
-        logger.error('Invalid settings: number_of_threads can\'t be lower than zero')
-        exit(-1)
-
-    if settings.language not in ['uk', 'ru', 'multi']:
-        logger.error(f'Invalid settings: language {settings.language} unsupported')
-        exit(-1)
-
-    if settings.sample_rate not in [8000, 24000, 48000]:
-        logger.error(f'Invalid settings: sample_rate {settings.sample_rate} unsupported')
-        exit(-1)
-
-    settings_dict = settings.dict()
-
-    del settings_dict['silero_settings']
-
     if not os.path.exists(models_directory):
         os.mkdir(models_directory)
 
-    model_name = settings.silero_settings[settings.language]['model_name']
-    local_file = models_directory + model_name
+    if not torch.cuda.is_available() and not settings.use_cpu:
+        logger.warning("Use of cuda is enabled in the configuration, but cuda is not available on this device. Using the cpu instead")
+        settings.use_cpu = True
 
-    if not os.path.exists(local_file):
-        url = settings.silero_settings[settings.language]['model_link']
-        logger.info(f'Download silero model {local_file}')
-        torch.hub.download_url_to_file(url, local_file)
+    if not os.path.exists(speakers_directory):
+        os.mkdir(speakers_directory)
 
-    logger.info(f'Current version: {version}')
-    logger.info(f'Settings: {json.dumps(settings_dict)}')
+    settings.xtts_models = get_subdirectories(models_directory)
+    settings.xtts_speakers = scan_files_for_names(speakers_directory, voice_extension)
 
+    logger.info(f'Found xtts models: {settings.xtts_models}')
+    logger.info(f'Found voices: {settings.xtts_speakers}')
+    logger.info(f'Current xtts model is: {settings.current_model}')
+
+    if settings.current_model not in settings.xtts_models:
+        raise RuntimeError("Xtts model to use not found in models directory")
+
+    if not os.path.exists(audios_directory):
+        os.mkdir(audios_directory)
 
 settings_checker()

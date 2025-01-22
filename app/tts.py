@@ -1,39 +1,52 @@
 import time
 import hashlib
 import os
-import subprocess
 import logging
 import torch
-import argparse
 
-from app.config import Settings, audios_directory, models_directory
+import torchaudio
+from TTS.tts.configs.xtts_config import XttsConfig
+from TTS.tts.models.xtts import Xtts
 
-settings = Settings()
+from app.config import audios_directory, models_directory, speakers_directory, settings
+
 logger = logging.getLogger('uvicorn')
 
-device = torch.device('cpu')
-torch.set_num_threads(settings.number_of_threads)
+# Init TTS
+config = XttsConfig()
 
-model_file_path = models_directory + settings.silero_settings[settings.language]['model_name']
+current_model = settings.current_model
 
-model = torch.package.PackageImporter(model_file_path).load_pickle('tts_models', 'model')
-model.to(device)
+logger.info("Trying to load xtts model...")
+config.load_json(models_directory + current_model + "/config.json")
+model = Xtts.init_from_config(config)
+model.load_checkpoint(config, checkpoint_dir=models_directory + current_model,
+                      vocab_path=models_directory + current_model + "/vocab.json", use_deepspeed=settings.use_deep_speed)
 
+if settings.use_cpu:
+    model.cpu()
+else:
+    model.cuda()
 
-def generate_speach(text: str, speaker: str, sample_rate: int,
-                    file_path: str, sox_params: str = '', volume: float = 1) -> bool:
-    temp_file_path = audios_directory + 'temp.wav'
+def generate_speach(text: str, speaker: str, file_path: str, language: str) -> bool:
 
-    torch.no_grad()
-    model.save_wav(ssml_text=text, speaker=speaker, audio_path=temp_file_path, sample_rate=sample_rate)
+    logger.info("Computing speaker latents...")
+    gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(audio_path=speakers_directory + speaker + ".wav")
 
-    command = f'sox -v {volume} ./audios/temp.wav {file_path} {sox_params}'
-    os.system(command)
+    logger.info("Inference xtts model...")
+    out = model.inference(
+        text,
+        language,
+        gpt_cond_latent,
+        speaker_embedding,
+        speed=1
+    )
+    torchaudio.save(file_path, torch.tensor(out["wav"]).unsqueeze(0), 24000)
 
     return True
 
 
-def get_audio_file(text: str, speaker: str, file_extension: str = 'wav') -> str:
+def get_audio_file(text: str, speaker: str, language: str, file_extension: str = 'wav') -> str:
     text_hash = hashlib.sha512(bytes(text, 'UTF-8')).hexdigest()
     file_path = audios_directory + speaker + '-' + text_hash + '.' + file_extension
 
@@ -43,44 +56,16 @@ def get_audio_file(text: str, speaker: str, file_extension: str = 'wav') -> str:
     if os.path.exists(file_path):
         return file_path
 
-    if speaker not in settings.silero_settings[settings.language]['speakers']:
-        raise RuntimeError(f'Invalid speaker: speaker {speaker} not supported by this language')
+    if speaker not in settings.xtts_speakers:
+        raise RuntimeError(f'Invalid speaker: speaker {speaker} not found in speakers directory')
 
     logger.info(f'Start text processing: {text}')
 
     start_time = time.time()
 
-    # result = subprocess.run(args=['python3',
-    #                               'tts_worker.py',
-    #                               f'--text={text}',
-    #                               f'--speaker={speaker}',
-    #                               f'--sample_rate={settings.sample_rate}',
-    #                               f'--file_path={file_path}',
-    #                               f'--sox_params={settings.sox_param}'
-    #                               ],
-    #                         capture_output=True)
-    #
-    # if result.returncode != 0:
-    #     raise RuntimeError(result.stderr.decode("utf-8"))
-
-    generate_speach(text=text, speaker=speaker, sample_rate=settings.sample_rate, file_path=file_path,
-                    sox_params=settings.sox_param)
+    generate_speach(text=text, speaker=speaker, file_path=file_path, language=language)
 
     elapsed_time = time.time() - start_time
     logger.info(f'Time spent on the process: {elapsed_time}')
 
     return file_path
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser('TTS Service')
-    parser.add_argument('--text', help='Text', type=str, default=None)
-    parser.add_argument('--speaker', help='Speaker', type=str, default=None)
-    parser.add_argument('--sample_rate', help='Sample rate', type=int, default=None)
-    parser.add_argument('--file_path', help='File path', type=str, default=None)
-    parser.add_argument('--sox_params', help='Sox params', type=str, default=None)
-
-    args = parser.parse_args()
-
-    generate_speach(text=args.text, speaker=args.speaker, sample_rate=args.sample_rate, file_path=args.file_path,
-                    sox_params=args.sox_params)
