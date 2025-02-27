@@ -41,7 +41,7 @@ class Settings(BaseSettings):
 
     use_deep_speed: bool = False
     use_cpu: bool = False
-    current_model = "Roxy_Migurdia_coqui_XTTS"
+    current_model = "xtts-v2.0.3-reed-arknights"
 
     xtts_models = []
     xtts_speakers = []

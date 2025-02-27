@@ -1,9 +1,7 @@
 *.md
 LICENSE
 Makefile
-model.pt
 /ha_config
 /audios
-/models
 version
 /venv

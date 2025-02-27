@@ -1,17 +1,20 @@
-version: '3'
+version: '1'
 
 services:
-  silero-tts-service:
-    image: "navatusein/silero-tts-service"
-    container_name: "silero-tts_service-service"
+  xtts-service:
+    image: "alekst7/xtts-service"
+    container_name: "xtts-service"
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 4G
     ports:
       - "9898:9898"
+    volumes:
+      - models_volume:/models
+      - speaker_volume:/speakers
     restart: unless-stopped
     environment:
-      NUMBER_OF_THREADS: 4
-      LANGUAGE: ru
-      SAMPLE_RATE: 48000
+      DEEP_SPEED: true
+      USE_CPU: false
+      CURRENT_MODEL: xtts-v2.0.3-reed-arknights

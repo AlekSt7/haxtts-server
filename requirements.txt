@@ -1,10 +1,10 @@
 torch==2.5.0
-torchaudio~=2.5.1
+torchaudio==2.5.1
 uvicorn~=0.20.0
 fastapi~=0.88.0
 pydantic~=1.10.2
 num2words~=0.5.12
-numpy~=1.23.5
+numpy~=1.22.0
 pymorphy2~=0.9.1
 pymorphy2-dicts-uk~=2.4.1.1.1460299261
 transliterate~=1.10.2
