@@ -1,6 +1,5 @@
+import io
 import time
-import hashlib
-import os
 import logging
 import torch
 
@@ -28,7 +27,7 @@ if settings.use_cpu:
 else:
     model.cuda()
 
-def generate_speach(text: str, speaker: str, file_path: str, language: str) -> bool:
+def generate_speach(text: str, speaker: str, language: str):
 
     logger.info("Computing speaker latents...")
     gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(audio_path=speakers_directory + speaker + ".wav")
@@ -41,20 +40,14 @@ def generate_speach(text: str, speaker: str, file_path: str, language: str) -> b
         speaker_embedding,
         speed=1
     )
-    torchaudio.save(file_path, torch.tensor(out["wav"]).unsqueeze(0), 24000)
 
-    return True
+    in_memory_audio_buffer = io.BytesIO()
+    torchaudio.save(in_memory_audio_buffer, torch.tensor(out["wav"]).unsqueeze(0), 24000, format='wav')
+    in_memory_audio_buffer.seek(0)
+    return in_memory_audio_buffer
 
 
-def get_audio_file(text: str, speaker: str, language: str, file_extension: str = 'wav') -> str:
-    text_hash = hashlib.sha512(bytes(text, 'UTF-8')).hexdigest()
-    file_path = audios_directory + speaker + '-' + text_hash + '.' + file_extension
-
-    if not os.path.exists(audios_directory):
-        os.mkdir(audios_directory)
-
-    if os.path.exists(file_path):
-        return file_path
+def get_audio_file(text: str, speaker: str, language: str):
 
     if speaker not in settings.xtts_speakers:
         raise RuntimeError(f'Invalid speaker: speaker {speaker} not found in speakers directory')
@@ -63,9 +56,9 @@ def get_audio_file(text: str, speaker: str, language: str, file_extension: str =
 
     start_time = time.time()
 
-    generate_speach(text=text, speaker=speaker, file_path=file_path, language=language)
+    result = generate_speach(text=text, speaker=speaker, language=language)
 
     elapsed_time = time.time() - start_time
     logger.info(f'Time spent on the process: {elapsed_time}')
 
-    return file_path
+    return result

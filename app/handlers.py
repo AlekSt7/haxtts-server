@@ -1,14 +1,15 @@
 import gc
 import logging
 import json
-import os
 
 from fastapi import APIRouter, Request, Depends
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from urllib.parse import parse_qs
 from functools import lru_cache
 
-from app.config import Settings, audios_directory, settings
+from starlette.responses import StreamingResponse
+
+from app.config import Settings, settings
 from app.language_mapper import map_mary_tts_to_xtts_language_codes
 from app.tts import get_audio_file
 
@@ -44,7 +45,7 @@ async def process(request: Request):
 
     try:
         audio_file = get_audio_file(text=text, speaker=speaker, language=language)
-        return FileResponse(path=audio_file)
+        return StreamingResponse(content=audio_file, media_type='audio/wav')
     except RuntimeError as exception:
         logger.error(exception)
         return HTMLResponse(status_code=400)
@@ -66,7 +67,7 @@ async def process(request: Request):
 
     try:
         audio_file = get_audio_file(text=text, speaker=speaker, language=language)
-        return FileResponse(path=audio_file, filename=audio_file, media_type='audio/wav')
+        return StreamingResponse(content=audio_file, media_type='audio/wav')
     except RuntimeError as exception:
         logger.error(exception)
         return HTMLResponse(status_code=400)
@@ -81,11 +82,7 @@ async def show_settings(settings: Settings = Depends(get_settings)):
 @router.get('/clear_cache')
 async def clear_cache():
     try:
-        for file in os.listdir(audios_directory):
-            os.remove(os.path.join(audios_directory, file))
-
         gc.collect()
-
         return PlainTextResponse(status_code=200, content='Success')
     except Exception as e:
         logger.error(e)
