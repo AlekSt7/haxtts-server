@@ -9,7 +9,6 @@ from pydantic import BaseSettings
 logger = logging.getLogger('uvicorn')
 models_directory: Final = './models/'
 speakers_directory: Final = './speakers/'
-audios_directory: Final = './audios/'
 voice_extension: Final = '.wav'
 version = '1.0.0'
 
@@ -71,8 +70,5 @@ def settings_checker():
 
     if settings.current_model not in settings.xtts_models:
         raise RuntimeError("Xtts model to use not found in models directory")
-
-    if not os.path.exists(audios_directory):
-        os.mkdir(audios_directory)
 
 settings_checker()

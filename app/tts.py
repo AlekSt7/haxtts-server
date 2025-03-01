@@ -7,7 +7,7 @@ import torchaudio
 from TTS.tts.configs.xtts_config import XttsConfig
 from TTS.tts.models.xtts import Xtts
 
-from app.config import audios_directory, models_directory, speakers_directory, settings
+from app.config import models_directory, speakers_directory, settings
 
 logger = logging.getLogger('uvicorn')
 
