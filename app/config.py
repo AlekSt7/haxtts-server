@@ -1,10 +1,11 @@
 import logging
 import os
-from typing import Final
+from typing import Final, Optional
 
 import torch
+from pydantic import Field
 
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 
 logger = logging.getLogger('uvicorn')
 models_directory: Final = './models/'
@@ -12,11 +13,11 @@ speakers_directory: Final = './speakers/'
 voice_extension: Final = '.wav'
 version = '1.0.0'
 
-def scan_files_for_names(directory, extensions):
+def scan_files_for_names(directory, extensions) -> list[str]:
     if not os.path.exists(directory):
         raise RuntimeError(f"Directory '{directory}' not found.")
 
-    matching_files = []
+    matching_files: list[str] = []
     for root, dirs, files in os.walk(directory):
         for file in files:
             if any(file.endswith(ext) for ext in extensions):
@@ -26,12 +27,12 @@ def scan_files_for_names(directory, extensions):
     return matching_files
 
 
-def get_subdirectories(directory):
+def get_subdirectories(directory) -> list[str]:
     if not os.path.exists(directory):
         raise RuntimeError(f"Directory '{directory}' not found.")
 
     all_entries = os.listdir(directory)
-    subdirectories = [entry for entry in all_entries if os.path.isdir(os.path.join(directory, entry))]
+    subdirectories: list[str] = [entry for entry in all_entries if os.path.isdir(os.path.join(directory, entry))]
     return subdirectories
 
 class Settings(BaseSettings):
@@ -40,10 +41,10 @@ class Settings(BaseSettings):
 
     use_deep_speed: bool = False
     use_cpu: bool = False
-    current_model = "xtts-v2.0.3-reed-arknights"
+    current_model: str = "Roxy_Migurdia_coqui_XTTS"
 
-    xtts_models = []
-    xtts_speakers = []
+    xtts_models: Optional[list[str]] = Field(None)
+    xtts_speakers: Optional[list[str]] = Field(None)
 
     class Config:
         env_file = ".env"

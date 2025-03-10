@@ -1,7 +1,6 @@
 *.md
 LICENSE
 Makefile
-/ha_config
-/audios
 version
 /venv
+/docs
