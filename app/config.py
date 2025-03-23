@@ -39,9 +39,9 @@ class Settings(BaseSettings):
     logger.info(f'Current version: {version}')
     logger.info(f'Getting service configuration...')
 
-    use_deep_speed: bool = False
-    use_cpu: bool = False
-    current_model: str = "Roxy_Migurdia_coqui_XTTS"
+    auto_detect_language: bool = False
+    current_model: str = "portal2"
+    max_text_parts_count: int = 8
 
     xtts_models: Optional[list[str]] = Field(None)
     xtts_speakers: Optional[list[str]] = Field(None)
@@ -54,10 +54,6 @@ settings = Settings()
 def settings_checker():
     if not os.path.exists(models_directory):
         os.mkdir(models_directory)
-
-    if not torch.cuda.is_available() and not settings.use_cpu:
-        logger.warning("Use of cuda is enabled in the configuration, but cuda is not available on this device. Using the cpu instead")
-        settings.use_cpu = True
 
     if not os.path.exists(speakers_directory):
         os.mkdir(speakers_directory)

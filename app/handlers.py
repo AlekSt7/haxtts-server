@@ -10,8 +10,7 @@ from functools import lru_cache
 from starlette.responses import StreamingResponse
 
 from app.config import Settings, settings
-from app.language_mapper import map_mary_tts_to_xtts_language_codes
-from app.tts import get_audio_file
+from app.tts import get_audio_in_bytes
 
 logger = logging.getLogger('uvicorn')
 router = APIRouter()
@@ -41,10 +40,9 @@ async def process(request: Request):
     speaker = request_args['VOICE']
     text = request_args['INPUT_TEXT']
     language = request_args['LOCALE'][0]
-    language = map_mary_tts_to_xtts_language_codes(language)
 
     try:
-        audio_file = get_audio_file(text=text, speaker=speaker, language=language)
+        audio_file = await get_audio_in_bytes(text=text, speaker=speaker, language=language)
         return StreamingResponse(content=audio_file, media_type='audio/wav')
     except RuntimeError as exception:
         logger.error(exception)
@@ -63,10 +61,9 @@ async def process(request: Request):
     speaker = body_args['VOICE'][0]
     text = body_args['INPUT_TEXT'][0]
     language = body_args['LOCALE'][0]
-    language = map_mary_tts_to_xtts_language_codes(language)
 
     try:
-        audio_file = get_audio_file(text=text, speaker=speaker, language=language)
+        audio_file = await get_audio_in_bytes(text=text, speaker=speaker, language=language)
         return StreamingResponse(content=audio_file, media_type='audio/wav')
     except RuntimeError as exception:
         logger.error(exception)

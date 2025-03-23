@@ -1,8 +1,7 @@
-torch~=2.6.0
-torchaudio~=2.6.0
+auralis~=0.2.8.post2
 pydantic~=2.10.6
 fastapi~=0.115.11
 starlette~=0.46.1
 uvicorn~=0.34.0
-coqui-tts~=0.25.3
 pydantic-settings~=2.8.1
+markdown

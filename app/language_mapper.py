@@ -16,9 +16,9 @@ def map_mary_tts_to_xtts_language_codes(xtts_language_code: str) -> str:
          language_code = mary_tts_to_xtts[xtts_language_code]
     except KeyError as e:
         raise ValueError(f'Undefined unit: {e.args[0]}')
-    check_xtts_language_code_support(language_code)
-    return language_code
+    return check_xtts_language_code_support(language_code)
 
-def check_xtts_language_code_support(xtts_language_code):
+def check_xtts_language_code_support(xtts_language_code) -> str:
     if not xtts_language_code:
         raise RuntimeError("Language not supported by xtts")
+    return xtts_language_code
