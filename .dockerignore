@@ -3,4 +3,5 @@ LICENSE
 Makefile
 version
 /venv
+/env
 /docs

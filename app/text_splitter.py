@@ -16,6 +16,7 @@ def get_text_parts(text: str, parts_count: int) -> list[str]:
     else:
         return result
 
+# from https://stackoverflow.com/a/31505798
 def split_by_sentences(text: str) -> list[str]:
     """
     Split the text into sentences.
