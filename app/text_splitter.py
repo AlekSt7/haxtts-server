@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 import re
+
+from app.config import settings
+
 alphabets= "([A-Za-z])"
 prefixes = "(Mr|St|Mrs|Ms|Dr)[.]"
 suffixes = "(Inc|Ltd|Jr|Sr|Co)"
@@ -12,9 +15,13 @@ multiple_dots = r'\.{2,}'
 def get_text_parts(text: str, parts_count: int) -> list[str]:
     result = split_by_sentences(text)
     if len(result) > parts_count:
-        return split_by_parts(result, parts_count)
-    else:
-        return result
+        result = combine_into_parts(result, parts_count)
+
+    if settings.remove_dots_at_the_end:
+        for i in range(len(result)):
+            result[i] = remove_dot(result[i])
+
+    return result
 
 # from https://stackoverflow.com/a/31505798
 def split_by_sentences(text: str) -> list[str]:
@@ -58,7 +65,20 @@ def split_by_sentences(text: str) -> list[str]:
     return sentences
 
 
-def split_by_parts(sentences: list[str], parts_count: int) -> list[str]:
+def combine_into_parts(sentences: list[str], parts_count: int) -> list[str]:
+    """
+    Combines sentences into text parts so that the number of text parts matches the number passed in parts_count
+
+    :param sentences: sentences that will be combined into text parts
+    :type sentences: list[str]
+
+    :param parts_count: number of parts of text
+    :type parts_count: int
+
+    :return: list of text parts
+    :rtype: list[str]
+    """
+
     # Sentences size
     total_sentences = len(sentences)
 
@@ -75,10 +95,20 @@ def split_by_parts(sentences: list[str], parts_count: int) -> list[str]:
         current_part_size = part_size + (1 if i < remainder else 0)
         end_index = start_index + current_part_size
 
+        part = ' '.join(sentences[start_index:end_index])
+
         # Add a part to the result
-        result.append(' '.join(sentences[start_index:end_index]))
+        result.append(part)
 
         # Updating the index for the next part
         start_index = end_index
 
     return result
+
+def remove_dot(string: str) -> str:
+    """
+    Removes the dot at the end of the line if there is one
+    """
+    if string.endswith('.'):
+        return string[:-1]
+    return string

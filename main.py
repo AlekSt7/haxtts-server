@@ -1,14 +1,24 @@
 import uvicorn
 
 from fastapi import FastAPI
+from starlette.middleware.cors import CORSMiddleware
+from starlette.staticfiles import StaticFiles
 
-from app.logger import LogConfig
+from app.const import static_dir
 from app.handlers import router
-
+from app.logger import LogConfig
 
 def get_application() -> FastAPI:
     application = FastAPI()
+    application.mount('/dashboard', StaticFiles(directory=static_dir), 'static')
     application.include_router(router)
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     return application
 
 

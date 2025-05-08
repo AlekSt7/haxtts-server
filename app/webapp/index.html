@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>File Management</title>
+</head>
+<body>
+    <div class="wrapper">
+
+        <h1>File management <i class="fa-solid fa-bars-progress"></i></h1>
+
+        <div class="info">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <div>
+                <h4 id="header">Purpose</h4>
+                <div id="text">This is the file management panel for speakers.<br>You can <b>upload</b> or <b>delete</b> your <b>.wav</b> files that will be used as reference during speech synthesis.</div>
+            </div>
+        </div>
+
+        <h2>Upload .wav file for speaker</h2>
+
+        <form class="drop-zone">
+            <span class="drop-zone__hint">Drop .wav file here or click to upload</span>
+            <input type="file" accept=".wav" required name="myFile" class="drop-zone__input">
+        </form>
+
+        <button id="upload-button">Upload</button>
+
+        <h2>Available speakers files:</h2>
+        <ul id="speakersList"></ul>
+        <script src="constants.js"></script>
+        <script src="dropzone.js"></script>
+        <script src="main.js"></script>
+
+    </div>
+</body>
+</html>

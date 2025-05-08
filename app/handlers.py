@@ -2,34 +2,32 @@ import gc
 import logging
 import json
 
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, UploadFile, File
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from urllib.parse import parse_qs
 from functools import lru_cache
 
-from starlette.responses import StreamingResponse
+from starlette.responses import StreamingResponse, FileResponse, JSONResponse
 
 from app.config import Settings, settings
+from app.const import voice_extension, speakers_directory
+from app.files import save_file_to_speakers_directory, delete_file_from_speakers_directory, scan_files_for_names
 from app.tts import get_audio_in_bytes
 
 logger = logging.getLogger('uvicorn')
 router = APIRouter()
 
-
 @lru_cache()
 def get_settings():
     return settings
 
+# main
 
 @router.get('/')
 async def index():
     return {'status': 'work'}
 
-
-@router.get('/voices', response_class=HTMLResponse)
-async def process(settings: Settings = Depends(get_settings)):
-    return '\n'.join(settings.xtts_speakers)
-
+#tts
 
 @router.get('/process')
 async def process(request: Request):
@@ -86,3 +84,38 @@ async def clear_cache():
         return PlainTextResponse(status_code=400, content='Error')
 
 
+# voices
+
+@router.get('/voices', response_class=HTMLResponse)
+async def process():
+    return '\n'.join(settings.xtts_speakers)
+
+@router.get('/available-voices', response_class=JSONResponse)
+async def process():
+    return JSONResponse(settings.xtts_speakers)
+
+@router.post("/upload")
+async def upload_file(file: UploadFile=File(...)):
+    if not file.filename.endswith(voice_extension):
+        response = HTMLResponse(status_code=400)
+        response.body = f"Only {voice_extension} files are allowed"
+        return response
+    await save_file_to_speakers_directory(file)
+    settings.xtts_speakers = scan_files_for_names(speakers_directory, voice_extension)
+    return {"filename": file.filename}
+
+
+@router.delete("/files/{filename}")
+async def delete_file(filename: str):
+    try:
+        delete_file_from_speakers_directory(filename)
+    except FileNotFoundError:
+        response = HTMLResponse(status_code=404)
+        response.body = f"File {filename} not found"
+        return response
+    settings.xtts_speakers = scan_files_for_names(speakers_directory, voice_extension)
+    return {"detail": "File deleted successfully"}
+
+@router.get(path="/files/{filename}")
+async def post_media_file(filename: str):
+    return FileResponse(f"{speakers_directory}/{filename}{voice_extension}", media_type="audio/mpeg")
