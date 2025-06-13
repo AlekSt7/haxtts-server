@@ -2,7 +2,10 @@ import io
 import time
 import logging
 import asyncio
+
+import torch
 from auralis import TTS, TTSRequest, TTSOutput
+from fastapi import HTTPException
 
 from app.config import settings
 from app.const import speakers_directory, voice_extension
@@ -32,20 +35,27 @@ async def generate_speech(text_parts: list[str], speaker: str, language: str) ->
         ) for i in text_parts
     ]
 
-    # Process in parallel
-    coroutines = [tts.generate_speech_async(req) for req in requests]
-    outputs = await asyncio.gather(*coroutines, return_exceptions=True)
+    with torch.no_grad():
 
-    # Handle results
-    valid_outputs = [
-        out for out in outputs
-        if not isinstance(out, Exception)
-    ]
+        # Process in parallel
+        coroutines = [tts.generate_speech_async(req) for req in requests]
+        outputs = await asyncio.gather(*coroutines, return_exceptions=True)
 
-    # Combine results
-    combined = TTSOutput.combine_outputs(valid_outputs)
-    in_memory_audio_buffer.write(combined.to_bytes())
-    in_memory_audio_buffer.seek(0)
+        # Handle results
+        valid_outputs = list()
+        for out in outputs:
+            if isinstance(out, Exception):
+                # LOGGER.error(f"Error generating TTS: {str(out)}")
+                raise HTTPException(status_code=500, detail="No valid outputs generated.")
+            else:
+                valid_outputs.append(out)
+
+        # Combine results
+        combined = TTSOutput.combine_outputs(valid_outputs)
+        in_memory_audio_buffer.write(combined.to_bytes())
+        in_memory_audio_buffer.seek(0)
+
+    torch.cuda.empty_cache()
 
     return in_memory_audio_buffer
 
