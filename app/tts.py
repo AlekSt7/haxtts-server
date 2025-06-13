@@ -10,7 +10,7 @@ from fastapi import HTTPException
 from app.config import settings
 from app.const import speakers_directory, voice_extension
 from app.language_mapper import map_mary_tts_to_xtts_language_codes
-from app.text_normalizer import unmark
+from app.text_normalizer import normalize_text
 from app.text_splitter import get_text_parts
 
 logger = logging.getLogger('uvicorn')
@@ -71,7 +71,7 @@ async def get_audio_in_bytes(text: str, speaker: str, language: str) -> io.Bytes
 
     # Prepare data for tts
     auralis_language = 'auto' if settings.auto_detect_language else map_mary_tts_to_xtts_language_codes(language)
-    text = unmark(text)
+    text = normalize_text(text)
     text_parts = get_text_parts(text, settings.max_text_parts_count)
 
     logger.info(f'Text parts to process: {text_parts}, size: {len(text_parts)}')

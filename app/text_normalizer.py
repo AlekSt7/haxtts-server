@@ -1,3 +1,4 @@
+import emoji
 from markdown import Markdown
 from io import StringIO
 
@@ -18,5 +19,8 @@ Markdown.output_formats["plain"] = unmark_element
 __md = Markdown(output_format="plain")
 __md.stripTopLevelTags = False
 
-def unmark(text):
-    return __md.convert(text)
+def give_emoji_free_text(text) -> str:
+    return emoji.replace_emoji(text, replace='')
+
+def normalize_text(text) -> str:
+    return __md.convert(give_emoji_free_text(text))
