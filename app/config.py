@@ -13,12 +13,14 @@ logger = logging.getLogger('uvicorn')
 root_dir = os.path.dirname(os.path.abspath(__file__))
 version = '1.0.0'
 
+
 class Settings(BaseSettings):
     logger.info(f'Current version: {version}')
     logger.info(f'Getting service configuration...')
 
     auto_detect_language: bool = False
     remove_dots_at_the_end: bool = True
+    voice_tts_errors: bool = True
     current_model: str = "AstraMindAI/xttsv2"
     current_model_gpt: str = "AstraMindAI/xtts2-gpt"
     max_text_parts_count: int = 8
@@ -28,7 +30,9 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
 
+
 settings = Settings()
+
 
 def settings_checker():
     if not os.path.exists(speakers_directory):
@@ -38,5 +42,6 @@ def settings_checker():
 
     logger.info(f'Found voices: {settings.xtts_speakers}')
     logger.info(f'Current xtts model is: {settings.current_model}')
+
 
 settings_checker()

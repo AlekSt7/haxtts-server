@@ -17,9 +17,19 @@ from app.tts import get_audio_in_bytes
 logger = logging.getLogger('uvicorn')
 router = APIRouter()
 
+
+def handle_tts_error(exception: RuntimeError):
+    logger.error(exception)
+    if settings.voice_tts_errors:
+        return FileResponse("./error.wav", media_type="audio/wav", filename="audio.wav")
+    else:
+        return HTMLResponse(status_code=400)
+
+
 @lru_cache()
 def get_settings():
     return settings
+
 
 # main
 
@@ -27,7 +37,8 @@ def get_settings():
 async def index():
     return {'status': 'work'}
 
-#tts
+
+# tts
 
 @router.get('/process')
 async def process(request: Request):
@@ -43,8 +54,7 @@ async def process(request: Request):
         audio_file = await get_audio_in_bytes(text=text, speaker=speaker, language=language)
         return StreamingResponse(content=audio_file, media_type='audio/wav')
     except RuntimeError as exception:
-        logger.error(exception)
-        return HTMLResponse(status_code=400)
+        return handle_tts_error(exception)
 
 
 # noinspection PyRedundantParentheses
@@ -64,8 +74,7 @@ async def process(request: Request):
         audio_file = await get_audio_in_bytes(text=text, speaker=speaker, language=language)
         return StreamingResponse(content=audio_file, media_type='audio/wav')
     except RuntimeError as exception:
-        logger.error(exception)
-        return HTMLResponse(status_code=400)
+        return handle_tts_error(exception)
 
 
 @router.get('/settings')
@@ -90,12 +99,14 @@ async def clear_cache():
 async def process():
     return '\n'.join(settings.xtts_speakers)
 
+
 @router.get('/available-voices', response_class=JSONResponse)
 async def process():
     return JSONResponse(settings.xtts_speakers)
 
+
 @router.post("/upload")
-async def upload_file(file: UploadFile=File(...)):
+async def upload_file(file: UploadFile = File(...)):
     if not file.filename.endswith(voice_extension):
         response = HTMLResponse(status_code=400)
         response.body = f"Only {voice_extension} files are allowed"
@@ -115,6 +126,7 @@ async def delete_file(filename: str):
         return response
     settings.xtts_speakers = scan_files_for_names(speakers_directory, voice_extension)
     return {"detail": "File deleted successfully"}
+
 
 @router.get(path="/files/{filename}")
 async def post_media_file(filename: str):

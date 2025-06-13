@@ -18,8 +18,8 @@ logger = logging.getLogger('uvicorn')
 logger.info("Trying to load xtts model...")
 tts = TTS().from_pretrained(settings.current_model, gpt_model=settings.current_model_gpt)
 
-async def generate_speech(text_parts: list[str], speaker: str, language: str) -> io.BytesIO:
 
+async def generate_speech(text_parts: list[str], speaker: str, language: str) -> io.BytesIO:
     logger.info(f'Inference xtts model, language is {language}')
 
     # Create audio buffer
@@ -45,8 +45,8 @@ async def generate_speech(text_parts: list[str], speaker: str, language: str) ->
         valid_outputs = list()
         for out in outputs:
             if isinstance(out, Exception):
-                # LOGGER.error(f"Error generating TTS: {str(out)}")
-                raise HTTPException(status_code=500, detail="No valid outputs generated.")
+                logger.error(f"Error generating TTS: {str(out)}")
+                raise RuntimeError("No valid outputs generated.")
             else:
                 valid_outputs.append(out)
 
@@ -59,8 +59,8 @@ async def generate_speech(text_parts: list[str], speaker: str, language: str) ->
 
     return in_memory_audio_buffer
 
-async def get_audio_in_bytes(text: str, speaker: str, language: str) -> io.BytesIO:
 
+async def get_audio_in_bytes(text: str, speaker: str, language: str) -> io.BytesIO:
     # Check for the presence of speaker file
     if speaker not in settings.xtts_speakers:
         raise RuntimeError(f'Invalid speaker: speaker {speaker} not found in speakers directory')
