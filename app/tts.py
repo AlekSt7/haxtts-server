@@ -16,7 +16,7 @@ from app.text_splitter import get_text_parts
 logger = logging.getLogger('uvicorn')
 
 logger.info("Trying to load xtts model...")
-tts = TTS().from_pretrained(settings.current_model, gpt_model=settings.current_model_gpt)
+tts = TTS().from_pretrained(settings.base_model, gpt_model=settings.gpt_model)
 
 
 async def generate_speech(text_parts: list[str], speaker: str, language: str) -> io.BytesIO:

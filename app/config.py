@@ -21,8 +21,8 @@ class Settings(BaseSettings):
     auto_detect_language: bool = False
     remove_dots_at_the_end: bool = True
     voice_tts_errors: bool = True
-    current_model: str = "AstraMindAI/xttsv2"
-    current_model_gpt: str = "AstraMindAI/xtts2-gpt"
+    base_model: str = "AstraMindAI/xttsv2"
+    gpt_model: str = "AstraMindAI/xtts2-gpt"
     max_text_parts_count: int = 8
 
     xtts_speakers: Optional[list[str]] = Field(None)
@@ -41,7 +41,7 @@ def settings_checker():
     settings.xtts_speakers = scan_files_for_names(speakers_directory, voice_extension)
 
     logger.info(f'Found voices: {settings.xtts_speakers}')
-    logger.info(f'Current xtts model is: {settings.current_model}')
+    logger.info(f'Current xtts model is: {settings.base_model}')
 
 
 settings_checker()
