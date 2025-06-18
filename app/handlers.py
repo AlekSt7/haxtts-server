@@ -1,58 +1,65 @@
 import gc
 import logging
 import json
-import os
 
-from fastapi import APIRouter, Request, Depends
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
+from fastapi import APIRouter, Request, Depends, UploadFile, File
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from urllib.parse import parse_qs
 from functools import lru_cache
 
-from app.normalizer import normalize
-from app.config import Settings
-from app.tts import get_audio_file
+from starlette.responses import StreamingResponse, FileResponse, JSONResponse
+
+from app.config import Settings, settings
+from app.const import voice_extension, speakers_directory
+from app.files import save_file_to_speakers_directory, delete_file_from_speakers_directory, scan_files_for_names
+from app.tts import get_audio_in_bytes
 
 logger = logging.getLogger('uvicorn')
 router = APIRouter()
 
 
+def handle_tts_error(exception: RuntimeError):
+    logger.error(exception)
+    if settings.voice_tts_errors:
+        return FileResponse("./error.wav", media_type="audio/wav", filename="audio.wav")
+    else:
+        return HTMLResponse(status_code=400)
+
+
 @lru_cache()
 def get_settings():
-    return Settings()
+    return settings
 
+
+# main
 
 @router.get('/')
 async def index():
     return {'status': 'work'}
 
 
-@router.get('/voices', response_class=HTMLResponse)
-async def process(settings: Settings = Depends(get_settings)):
-    return '\n'.join(settings.silero_settings[settings.language]['speakers'])
-
+# tts
 
 @router.get('/process')
-async def process(request: Request, settings: Settings = Depends(get_settings)):
+async def process(request: Request):
     request_args = dict(request.query_params)
 
     print(request_args)
 
     speaker = request_args['VOICE']
     text = request_args['INPUT_TEXT']
-    text = normalize(text)
-    text = f'<speak>{text}</speak>'
+    language = request_args['LOCALE'][0]
 
     try:
-        audio_file = get_audio_file(text=text, speaker=speaker)
-        return FileResponse(path=audio_file)
+        audio_file = await get_audio_in_bytes(text=text, speaker=speaker, language=language)
+        return StreamingResponse(content=audio_file, media_type='audio/wav')
     except RuntimeError as exception:
-        logger.error(exception)
-        return HTMLResponse(status_code=400)
+        return handle_tts_error(exception)
 
 
 # noinspection PyRedundantParentheses
 @router.post('/process')
-async def process(request: Request, settings: Settings = Depends(get_settings)):
+async def process(request: Request):
     body = await request.body()
     body_decoded = body.decode("utf-8")
     body_args = parse_qs(body_decoded)
@@ -61,40 +68,66 @@ async def process(request: Request, settings: Settings = Depends(get_settings)):
 
     speaker = body_args['VOICE'][0]
     text = body_args['INPUT_TEXT'][0]
-    text = normalize(text)
-
-    if (settings.ha_fix):
-        text = f'{text}<break time="2s"/>'
-    
-    text = f'<speak>{text}</speak>'
+    language = body_args['LOCALE'][0]
 
     try:
-        audio_file = get_audio_file(text=text, speaker=speaker)
-        return FileResponse(path=audio_file, filename=audio_file, media_type='audio/wav')
+        audio_file = await get_audio_in_bytes(text=text, speaker=speaker, language=language)
+        return StreamingResponse(content=audio_file, media_type='audio/wav')
     except RuntimeError as exception:
-        logger.error(exception)
-        return HTMLResponse(status_code=400)
+        return handle_tts_error(exception)
 
 
 @router.get('/settings')
 async def show_settings(settings: Settings = Depends(get_settings)):
     settings_dict = settings.dict()
-    del settings_dict['silero_settings']
     return PlainTextResponse(json.dumps(settings_dict, indent=2))
 
 
 @router.get('/clear_cache')
-async def clear_cache(settings: Settings = Depends(get_settings)):
-    audios_directory = './audios/'
+async def clear_cache():
     try:
-        for file in os.listdir(audios_directory):
-            os.remove(os.path.join(audios_directory, file))
-
         gc.collect()
-
         return PlainTextResponse(status_code=200, content='Success')
     except Exception as e:
         logger.error(e)
         return PlainTextResponse(status_code=400, content='Error')
 
 
+# voices
+
+@router.get('/voices', response_class=HTMLResponse)
+async def process():
+    return '\n'.join(settings.xtts_speakers)
+
+
+@router.get('/available-voices', response_class=JSONResponse)
+async def process():
+    return JSONResponse(settings.xtts_speakers)
+
+
+@router.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    if not file.filename.endswith(voice_extension):
+        response = HTMLResponse(status_code=400)
+        response.body = f"Only {voice_extension} files are allowed"
+        return response
+    await save_file_to_speakers_directory(file)
+    settings.xtts_speakers = scan_files_for_names(speakers_directory, voice_extension)
+    return {"filename": file.filename}
+
+
+@router.delete("/files/{filename}")
+async def delete_file(filename: str):
+    try:
+        delete_file_from_speakers_directory(filename)
+    except FileNotFoundError:
+        response = HTMLResponse(status_code=404)
+        response.body = f"File {filename} not found"
+        return response
+    settings.xtts_speakers = scan_files_for_names(speakers_directory, voice_extension)
+    return {"detail": "File deleted successfully"}
+
+
+@router.get(path="/files/{filename}")
+async def post_media_file(filename: str):
+    return FileResponse(f"{speakers_directory}/{filename}{voice_extension}", media_type="audio/mpeg")

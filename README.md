@@ -1,243 +1,222 @@
-![Supports aarch64 Architecture][aarch64-badge]
 ![Supports amd64 Architecture][amd64-badge]
-![Supports armhf Architecture][armhf-badge]
-![Supports armv7 Architecture][armv7-badge]
-![Supports i386 Architecture][i386-badge]
+![Supports by nvidia gpu][nvidia-badge]
 [![MIT License][license-shield]][license-url]
 
-# Silero TTS Service
+# HAxTTS Server
 
-## Содержание
-- [Информация](#information)
-- [Установка сервера](#server-install)
-- [Настройки сервера](#server-configure)
-- [Настройка в Home Assistant](#ha-configure)
-- [Настройка в Rhasspy](#rhasspy-configure)
-- [Функциональные возможности](#features)
-- [Endpoints](#endpoints)
-- [Вывод звука на Bluetooth колонку](#bluetooth-speaker)
+[![en](https://img.shields.io/badge/lang-ru-red.svg)](./README.ru.md)
 
+## Contents
+- [About the project](#about)
+- [Startup recommendations](#start-recommendation)
+- [Server installation](#server-install)
+- [Server configuration](#server-configure)
+- [Configuration in Home Assistant](#ha-configure)
+- [Configuration in Rhasspy](#rhasspy-configure)
+- [Output sound to a Bluetooth speaker](#bluetooth-speaker)
+- [Finetune models](#finetune)
+- [API](#api)
+- [Development](#development)
 
-<a id="information"></a>
-## Информация
- Данный проект я создал, чтобы обеспечить свой умный дом нормальным синтезом речи. Также, чтобы обеспечить  rhasspy нормальным синтезом речи. Уже готовые решения меня не устроили и было решено изобрести свой велосипед. За основу были взяты модели [Silero].
+<a id="about"></a>
+## About the project
 
-Вдохновился я проектом [silero-ha-http-tts] от [Gromina]. Он был сыроват и я решил сделать всё по уму разуму, с настройками и готовыми контейнерами.  
-<br/>
+![Logo]
+Hax-TTS is a Mary TTS compatible server for speech synthesis with XTTSv2 models support.
+This project aims to provide your Home Assistant with high-quality speech synthesis.</br>
+The server is based on [XTTSv2] models from [Coqui] (support discontinued, working [fork] from idiap).
+The very cool project [Auralis] is used as a backend for model inference.</br>
+The server supports parallel computing to speed up speech synthesis on large amounts of text.
+Pre-trained custom models are also supported (currently only links to Hugging Face).</br>
 
-<a id="server-install"></a>
-## Установка сервера
+The models themselves are multilingual, so the choice of language in the Mary TTS integration only affects the accent when pronouncing speech.
+The models also support cloning any voices (both male and female).</br>
+To select a voice, you need to set the `voice` parameter in the Mary TTS configuration to the name of the wav file with the recorded voice sample, see [Configuration in Home Assistant](#ha-configure).
+It is also possible to add or remove your own wav files with voice samples. The voice control panel is available at http://your-address:9898/dashboard/index.html. Only .wav files are supported.</br>
 
-### Установка через Docker:
-Выполните команду:
+Below is a table with supported languages:
+
+| Language | Language code |
+|:------------------------:|:---------:|
+| German | `de` |
+| English (British)* | `en_GB` |
+| English (USA)* | `en_US` |
+| French | `fr` |
+| Italian | `it` |
+| Russian | `ru` |
+| Turkish | `tr` |
+*Within this project, `en_GB` and `en_US` are no different, this is done to support integration with the Mary TTS API.
+
+At the moment, the server is only compatible with the Mary TTS API (if I can find time in my life
+to refine it, maybe someday I can add support for [Wyoming Protocol]).<br>
+
+<a id="start-recommendation"></a>
+## Startup recommendations
+
+The Docker container needs about 6gb of RAM to work, and a graphics adapter with VRAM of at least 4gb is <b>required</b> (I personally tested on RTX3060).
+The server will not run on the CPU.</br>
+For a quick start, see [server installation](#server-install) and [configuration in Home Assistant](#ha-configure)
+
+Check operability via CURL:
 ```commandline
-docker run -p 9898:9898 -m 1g -e NUMBER_OF_THREADS=4 -e LANGUAGE=ru -e SAMPLE_RATE=48000 --name tts_silero -d navatusein/silero-tts-service
+curl -d "VOICE=your_voice_name&LOCALE=ru&INPUT_TEXT=Это тест речи!" -X POST http://localhost:9898/process --output test.wav
 ```
 
-<br/>
+### Performance
+In most cases, the speed on Nvidia RTX 3060 is, on average, 2 seconds for text ~100 characters.<br>
+[Declared speed from the Auralis engine]
 
-### Установка через Docker Compose:
-Создайте файл `docker-compose.yml` и перенесите в него содержимое:
+<a id="server-install"></a>
+## Server installation
+
+### Installation via Docker:
+Execute the command:
+```commandline
+docker run -p 9898:9898 --gpus all --name hax-tts-service -d alekst7/haxtts-service:latest
+```
+With additional parameters:
+```commandline
+docker run -p 9898:9898 --gpus all --name hax-tts-service -e BASE_MODEL="AstraMindAI/xttsv2" -e GPT_MODEL="AstraMindAI/xtts2-gpt" -e MAX_TEXT_PARTS_COUNT=4 -d alekst7/haxtts-service:latest
+```
+
+### Installation via Docker Compose:
+Create a `docker-compose.yml` file and transfer the contents to it:
 ```yaml
-version: '3'
+version: '1'
 
 services:
-  silero-tts-service:
-    image: "navatusein/silero-tts-service"
-    container_name: "silero-tts-service"
-    deploy:
-      resources:
-        limits:
-          memory: 1G
+  hax-tts-service:
+    image: "alekst7/haxtts-service:latest"
+    container_name: "hax-tts-service"
     ports:
       - "9898:9898"
     restart: unless-stopped
-    environment:
-      NUMBER_OF_THREADS: 4
-      LANGUAGE: ru
-      SAMPLE_RATE: 48000
+    runtime: nvidia
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+# You can use custom parameters here
+#     environment:
+#       CURRENT_MODEL: "AstraMindAI/xttsv2"
+#       CURRENT_MODEL_GPT: "AstraMindAI/xtts2-gpt"
+#       MAX_TEXT_PARTS_COUNT: 8
 ```
-Выполните команду:
+Execute the command:
 ```commandline
-docker-compose up
+docker compose up
 ```
-
-<br/>
 
 <a id="server-configure"></a>
-## Настройки сервера
-Все настройки сервера передаются как параметры окружения docker контейнеру при запуске.
+## Server configuration
+All server configuration parameters are passed as environment parameters to the docker container at startup.
 
-Количество ядер для обработки речи `NUMBER_OF_THREADS`:
+Automatic language detection `AUTO_DETECT_LANGUAGE`:
 ```yaml
-NUMBER_OF_THREADS: 4 
+AUTO_DETECT_LANGUAGE: False
 ```
-Количество потоков от 1 до количества ядер процессора сервера.<br/>
-По умолчанию: `4`<br/>
-<br/>
+Default: `False`<br>
+Whether the language will be detected automatically. If this function is enabled, the language specified in the `GET` and `POST` requests to the `/process` endpoint will be ignored, and the system will try to determine the language itself.<br>
+This function is good if the text contains different languages, and you need to maintain individual pronunciation for each language. This function may not work very well, so it is disabled by default.</br>
+<br>
 
-Язык синтеза речи `LANGUAGE`:
+Removing the dot at the end of the text `REMOVE_DOTS_AT_THE_END`:
 ```yaml
-LANGUAGE: ru
+REMOVE_DOTS_AT_THE_END: ru
 ```
-По умолчанию: `ru`<br/>
+Default: `True`<br>
+A parameter that specifies whether to remove dots at the end of the text. I noticed that in most XTTSv2 models, artifacts (exclamations, mumbling, exclamations) can be heard at the end of the speech if the text ends with a dot.</br>
+A good solution was to introduce a function that simply removes the dot at the end of the text going to the speech synthesizer.
+It is worth paying attention to the fact that the parameter removes the dot <b>not</b> at the end of sentences, but <b>only at the end of the text</b> that will go to the
+speech synthesizer.</br>
+<br>
 
-Поддерживаемые языки, с доступными для них голосами:
-
-|    Язык    | Код языка | Поддерживаемые голоса                              |
-|:----------:|:---------:|:---------------------------------------------------|
-|  Русский   |   `ru`    | `aidar` `baya` `kseniya` `xenia` `eugene` `random` |
-| Українська |   `uk`    | `mykyta` `random`                                  |
-
-<br/>
-
-Частота дискретизации `SAMPLE_RATE`:
+Voice acting errors `VOICE_TTS_ERRORS`:
 ```yaml
-SAMPLE_RATE: 48000 
+VOICE_TTS_ERRORS: True
 ```
-Возможние значения: `48000`, `24000`, `8000`<br/>
-По умолчанию: `48000`
+Default: `True`<br>
+If the parameter is `True`, then if an error occurs during speech synthesis, the server will send an HTTP response with code 200. Which will contain an audio file with the voiced text about the error.</br>
+If `False`, the server will return an HTTP response with code 400 during an error.</br>
+<br>
 
-<br/>
-
-Параметры утилиты sox `SOX_PARAM`:
+Base XTTSv2 model `BASE_MODEL`:
 ```yaml
-SOX_PARAM: "reverb 50 50 10" # Добавляет эхо на речь
+BASE_MODEL: "AstraMindAI/xttsv2"
 ```
-По умолчанию: Пустой
+Default: `AstraMindAI/xttsv2`</br>
+Base XTTSv2 model. The value should be a link to the model from Hugging Face in the format `Author/model`.
+The model will be downloaded automatically at startup.</br>
+This parameter is required to be used together with the `GPT_MODEL` parameter.</br>
+Link to the official base XTTS model from Auralis: https://huggingface.co/AstraMindAI/xttsv2</br>
+<br>
 
-Выходной файл проходит через утилиту sox. Ей можно передать параметры, чтобы наложить эффекты на речь: поднять тембр, добавить эхо, бас буст включить.
-
-Ссылка на документацию утилиты sox: https://linux.die.net/man/1/sox
-
-<br/>
-
-Исправление обрубания окончания фразы `HA_FIX`:
+GPT-component XTTSv2 `GPT_MODEL`:
 ```yaml
-HA_FIX: True 
+GPT_MODEL: "AstraMindAI/xtts2-gpt"
 ```
-Может принимать значения: `True` `False`<br>
-По умолчанию: `False`
+Default: `AstraMindAI/xtts2-gpt`</br>
+GPT-component of the XTTSv2 model. The value should be a link to the model from Hugging Face in the format `Author/model`.
+The model will be downloaded automatically at startup.</br>
+Link to the official base GPT-model XTTS from Auralis: https://huggingface.co/AstraMindAI/xtts2-gpt</br>
+<br>
 
-Исправляет ошибку, при которой Home Assistant не договаривает конец фразы. Добавляет секунду молчания в конец речи.
- 
-<br/>
+Parallelism `MAX_TEXT_PARTS_COUNT`:
+```yaml
+MAX_TEXT_PARTS_COUNT: 8
+```
+Default: `8`</br>
+Reducing this value will save video memory, increasing it will reduce the synthesis time <b>only on large texts</b>.
+The default is the optimal value, selected empirically.<br>
+For performance, the server can synthesize speech in parallel in several threads.
+This is ensured by dividing a large text into separate parts.</br>
+The `MAX_TEXT_PARTS_COUNT` parameter limits the maximum number of text parts.
+If the parameter specifies the number 8, then the text, for example, consisting of 15 sentences, will be divided into 8 parts, where 7 parts will have 2 sentences each,
+and the last part will have one sentence. Accordingly, the text will be synthesized in eight threads. As a result, there will be 8 audio files, which will
+combine into one output audio.
 
 <a id="ha-configure"></a>
-## Настройка в Home Assistant
-В файле `configuration.yaml` добавьте запись:
+## Configuration in Home Assistant
+In the `configuration.yaml` file, add the entry:
 ```yaml
 tts:
   - platform: marytts
-    host: localhost # Адрес сервера
+    host: localhost # IP address of the server
     port: 9898
     codec: WAVE_FILE
-    voice: xenia # Имя голоса который хотите использовать.
-    language: ru # Не используется. Настройки языка указываются в настройках сервера.
+    voice: xenia # The name of the voice you want to use.
+    language: ru # The model is multilingual, it only affects the pronunciation accent.
 ```
 
-<br/>
-
 <a id="rhasspy-configure"></a>
-## Настройка в Rhasspy Assistant
-1) В настройках, в разделе Text to Speech. Выберете модуль MarryTTS.
-2) Примените настройки  Rhasspy Assistant (он перезагрузиться).
-3) Укажите адрес вашего сервера с путём `/process`.
-4) Нажмите на кнопку Refresh.
-5) В списке доступных голосов, выберите голос который вам нужно.
-6) Примените настройки  Rhasspy Assistant (он перезагрузиться).
+## Configuration in Rhasspy Assistant
+1) In the settings, in the Text to Speech section. Select the MarryTTS module.
+2) Apply the Rhasspy Assistant settings (it will reboot).
+3) Specify the address of your server with the path `/process`.
+4) Click on the Refresh button.
+5) In the list of available voices, select the voice you need.
+6) Apply the Rhasspy Assistant settings (it will reboot).
 
 ![RhasspyConfig]
 
-<br/>
-
-<a id="features"></a>
-## Функциональные возможности
-
-### Нормализация цифр
-Сервис умеет переводить цифры в текст.<br/>
-Пример:
-```text
-Текст с цифрой 1.
-```
-[Нормализация Пример 1]
-
-<br/>
-
-### Склонение существительных после цифры
-Сервис умеет склонять существительных после цифр.<br/>
-Для этого слово которое нужно склонить после цифры, возьмите  в  тег `<d>слово</d>`.<br/>
-Пример:
-```text
-У меня было 15 <d>яблоко</d>.
-```
-[Склонение Пример 1]
-
-Если нужно склонить несколько слов, то каждое нужно брать в тег `<d>слово</d>` отдельно.
-
-```text
-Мне осталось работать 15 <d>рабочий</d> <d>день</d>.
-```
-[Склонение Пример 2]
-
-<br/>
-
-### Произношение транслита
-Сервис умеет произносить транслит.<br/>
-Пример:
-```text
-Lorem ipsum dolor sit amet.
-```
-[Транслит Пример 1]
-
-<br/>
-
-### SSML
-С помощью SSML вы можете управлять паузами и просодией синтезированной речи.
-```text
-<p>
-  Когда я просыпаюсь, <prosody rate="x-slow">я говорю довольно медленно</prosody>.
-  Потом я начинаю говорить своим обычным голосом,
-  <prosody pitch="x-high"> а могу говорить тоном выше </prosody>,
-  или <prosody pitch="x-low">наоборот, ниже</prosody>.
-  Потом, если повезет – <prosody rate="fast">я могу говорить и довольно быстро.</prosody>
-  А еще я умею делать паузы любой длины, например две секунды <break time="2000ms"/>.
-  <p>
-    Также я умею делать паузы между параграфами.
-  </p>
-  <p>
-    <s>И также я умею делать паузы между предложениями</s>
-    <s>Вот например как сейчас</s>
-  </p>
-</p>
-```
-[SSML Пример 1]
-
-<br/>
-
-<a id="endpoints"></a>
-## Endpoints
-- `GET` `/clear_cache` - Очищает кэш уже синтезированных сообщений.
-- `GET` `/settings` - Возвращает текущие настройки сервера.
-- `GET` `/voices` - Возвращает список доступных голосов для выбранного языка.
-- `GET` `/process?VOICE=[Выбраный голос]&INPUT_TEXT=[Текст для обработки]` - Возвращает аудио файл синтезированной речи.
-- `POST` `/process` в теле запроса `VOICE=[Выбраный голос]`, `INPUT_TEXT=[Текст для обработки]` - Возвращает аудио файл синтезированной речи.
-
-<br/>
-
 <a id="bluetooth-speaker"></a>
-## Вывод звука на Bluetooth колонку
+## Output sound to a Bluetooth speaker
 
-1) Если Home Assistant как основная ОС (HAOS), то читаем эту документацию [TTS Bluetooth Speaker for Home Assistant]
-2) Если Home Assistant стоит на Debian, то делаем следующее:
+1) If Home Assistant is the main OS (HAOS), then read this documentation [TTS Bluetooth Speaker for Home Assistant]
+2) If Home Assistant is on Debian, then do the following:
 
-Отредактируем client.conf
+Edit client.conf
 
 ```commandline
 nano /etc/pulse/client.conf
 ```
 
-Добавим следующее:
+Add the following:
 
 ```commandline
 default-server = unix:/usr/share/hassio/audio/external/pulse.sock
@@ -246,15 +225,15 @@ autospawn = no
 
 ![ClientConf]
 
-Перезапускаем pulseaudio.
+Restart pulseaudio.
 
 ```commandline
 pulseaudio -k && pulseaudio --start
 ```
 
-Ставим аддон [Mopidy версии Current version: 2.1.1] и ставим только эту версию. Mopidy 2.2.0 не ставить - она сломанная. Подробнее про поломанную версию Mopidy 2.2.0 читать [здесь].
+Install the addon [Mopidy 2.1.1] and install only this version. Do not install Mopidy 2.2.0 - it is broken. Read more about the broken version of Mopidy 2.2.0 [here].
 
-Добавляем в configuration.yaml
+Add to configuration.yaml
 ```yaml
 media_player:
   - platform: mpd
@@ -263,103 +242,134 @@ media_player:
     port: 6600
 ```
 
-Перезагружаем Home Assistant полностью, чтобы перезагрузился сам Debian.
+Reboot Home Assistant completely so that Debian itself reboots.
 
 ![RebootHa]
 
-Подключаем bluetooth колонку к Debian, kb,j через GUI, либо через консоль используя команду bluetoothctl
+Connect the bluetooth speaker to Debian, either through the GUI, or through the console using the bluetoothctl command
 
-Включим bluetooth:
+Enable bluetooth:
 
 ```commandline
 power on
 ```
 
-Запуск сканирования девайсов:
+Start scanning for devices:
 
 ```commandline
 scan on
 ```
 
-Как увидели свой девайс, спариваемся с устройством:
+Once you see your device, pair with the device:
 
 ```commandline
-pair [mac адрес девайса]
+pair [mac address of the device]
 ```
 
-Подключаемся к устройству:
+Connect to the device:
 
 ```commandline
-connect [mac адрес девайса]
+connect [mac address of the device]
 ```
 
-Добавляем устройство в доверенные:
+Add the device to trusted:
 
 ```commandline
-trust [mac адрес девайса]
+trust [mac address of the device]
 ```
 
-Далее, как добавлен bluetooth девайс то в двух аддонов Rhasspy Assistant и Mopidy нужно указать источник вывода звука bluetooth девайса:
+Next, once the bluetooth device is added, you need to specify the sound output source of the bluetooth device in the two addons Rhasspy Assistant and Mopidy:
 
-1) В Rhasspy Assistant указываем так:
+1) In Rhasspy Assistant, specify it like this:
 
 ![RhasspyAssistantConfig]
 
-2) В Mopidy указываем так:
+2) In Mopidy, specify it like this:
 
 ![MopidyConfig]
 
-
-Проверяем работоспособность:
+Check operability:
 
 ![TtsSay]
 
-Код: 
+Code:
 
 ```yaml
 service: tts.marytts_say
 data:
   entity_id: media_player.mpd_mopidy
   message: >-
-    Спустя 15 лет жизнь некогда бороздившего космические просторы Жана-Люка
-    Пикара
+    After 15 years, the life of Jean-Luc Picard, who once roamed the cosmic expanses
 ```
 
-[aarch64-badge]: https://img.shields.io/badge/aarch64-no-red.svg?style=for-the-badge
-[amd64-badge]: https://img.shields.io/badge/amd64-yes-green.svg?style=for-the-badge
-[armhf-badge]: https://img.shields.io/badge/armhf-no-red.svg?style=for-the-badge
-[armv7-badge]: https://img.shields.io/badge/armv7-no-red.svg?style=for-the-badge
-[i386-badge]: https://img.shields.io/badge/i386-yes-green.svg?style=for-the-badge
+<a id="finetune"></a>
+## Fintune models
 
-[license-shield]: https://img.shields.io/github/license/Navatusein/Silero-TTS-Service.svg?style=for-the-badge
-[license-url]: https://github.com/Navatusein/Silero-TTS-Service/blob/Main/LICENSE
+The server supports finetune models. To fine-tune your model, you can use
+[this tool], or some other tools available for these purposes.<br>
+After a working XTTSv2 model has been obtained, it must be converted to the Auralis format.
+To do this, use [this script] (it is also duplicated in my project):
+```commandline
+python checkpoint_converter.py path/to/checkpoint.pth --output_dir path/to/output
+```
+The script will create two folders, one with the XTTSv2 core checkpoint and one with the gpt2 component.
+Then these models can be uploaded to Hugging Face and used.</br>
+Local launch of models is not yet supported.
 
-[Silero]: https://github.com/snakers4/silero-models
+<a id="api"></a>
+## API
 
-[silero-ha-http-tts]: https://github.com/Gromina/silero-ha-http-tts
-[Gromina]: https://github.com/Gromina
+### Mary TTS Compatible
+
+- `GET` `/clear_cache` - Calls GC inside the application.
+- `GET` `/settings` - Returns the current server settings.
+- `GET` `/voices` - Returns a string of the list of available voices (names of .wav files).
+- `GET` `/process?VOICE=[Selected voice]&INPUT_TEXT=[Text to process]` - Returns an audio file of synthesized speech.
+- `POST` `/process` in the request body `VOICE=[Selected voice]`, `INPUT_TEXT=[Text to process]` - Returns an audio file of synthesized speech.
+
+### Voice Management
+
+- `GET` `/available-voices` - Returns a json object with a list of available voices (names of .wav files).
+- `POST` `/upload` - Uploads a .wav file with a voice sample to the server.
+- `DELETE` `/files/{filename}` - Deletes a .wav file with a voice sample from the server.
+- `GET` `/files/{filename}` - Returns a .wav file with a voice sample from the server for further playback.
+
+<a id="development"></a>
+## Development
+
+For development and testing under Windows, you need to use WSL.</br>
+Debian distribution is suitable, because Ubuntu may have an error when installing the `EbookLib`, `ffmpeg`, `langid`, `docopt` and `jaconv` packages.
+Installing the auralis package can take a very long time, more than an hour, so be prepared, this is normal.
+The whole problem is related to the Triton package used in Auralis. It cannot be run under Windows.</br>
+The code is written using Python 3.10
+
+[amd64-badge]: https://img.shields.io/badge/amd64-yes-green
+[nvidia-badge]: https://img.shields.io/badge/nvidia-yes-green
+[license-shield]: https://img.shields.io/badge/license-MIT-green
+
+[license-url]: ./LICENSE
+
+[Coqui]: https://github.com/coqui-ai/TTS
+[fork]: https://github.com/idiap/coqui-ai-TTS
+[Auralis]: https://github.com/astramind-ai/Auralis
+[XTTSv2]: https://huggingface.co/coqui/XTTS-v2
+[Wyoming Protocol]: https://www.home-assistant.io/integrations/wyoming/
 
 [RhasspyConfig]: /docs/RhasspyConfig.png
-
-[Нормализация Пример 1]: https://on.soundcloud.com/WsG6i
-
-[Склонение Пример 1]: https://on.soundcloud.com/x7RDs
-[Склонение Пример 2]: https://on.soundcloud.com/q6Bge
-
-[Транслит Пример 1]: https://on.soundcloud.com/Mfgqv
-
-[SSML Пример 1]: https://on.soundcloud.com/kk9CY
 
 [TTS Bluetooth Speaker for Home Assistant]: https://github.com/pkozul/ha-tts-bluetooth-speaker
 
 [ClientConf]: /docs/ClientConf.png
 
-[Mopidy версии Current version: 2.1.1]: https://github.com/Llntrvr/Hassio-Addons
-
-[здесь]: https://github.com/Poeschl/Hassio-Addons/issues/334
+[Mopidy 2.1.1]: https://github.com/Llntrvr/Hassio-Addons
+[here]: https://github.com/Poeschl/Hassio-Addons/issues/334
+[Declared speed from the Auralis engine]: https://github.com/astramind-ai/Auralis#:~:text=Convert%20the%20entire%20first%20Harry%20Potter%20book%20to%20speech%20in%2010%20minutes%20(realtime%20factor%20of%20%E2%89%88%200.02x!%20)
+[this tool]: https://github.com/daswer123/xtts-finetune-webui
+[this script]: https://github.com/astramind-ai/Auralis/blob/main/src/auralis/models/xttsv2/utils/checkpoint_converter.py
 
 [RebootHa]: /docs/RebootHa.png
 
 [RhasspyAssistantConfig]: /docs/RhasspyAssistantConfig.png
 [MopidyConfig]: /docs/MopidyConfig.png
 [TtsSay]: /docs/TtsSay.png
+[Logo]: /docs/HaxTTSLogo.png

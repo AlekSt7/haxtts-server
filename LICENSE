@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2022 Bohdan
+Copyright (c) 2025 AlekSt7
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +19,20 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+  --------------------------- NOTICE ---------------------------
+
+This software includes code licensed under the MIT License and Apache License 2.0.
+
+1. The main codebase is licensed under MIT
+2. The Auralis project files used in Silero-TTS-Service/app/tts
+     are licensed under the Apache License 2.0 (https://www.apache.org/licenses/)
+3. The XTTSv2 model licensed under the Coqui AI License (https://coqui.ai/coqui-ai-license)
+
+When using this software, you must comply with both licenses for their respective components.
+
+For the Coqui AI License components:
+- You may use these components according to the terms specified at
+  https://coqui.ai/coqui-ai-license
+
+All other code is licensed under MIT as specified above.

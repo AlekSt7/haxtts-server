@@ -1,0 +1,137 @@
+body {
+    background:#eaeaea;
+    /*font-family: Verdana, sans-serif;*/
+    font-family: "Quicksand", sans-serif;
+    color: #393E46;
+}
+
+.wrapper {
+    background:#fff;
+    width: 500px;
+    height: 90%;
+    display: flex;
+    flex-direction: column;
+    box-shadow:0px 5px 15px rgba(0,0,0,0.2);
+    border-radius:8px;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 20px;
+}
+
+.drop-zone {
+    height: 50px;
+    padding: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-weight: 500;
+    font-size: 20px;
+    cursor: pointer;
+    color: #cccccc;
+    border: 4px dashed #2684ff;
+    border-radius: 10px;
+}
+
+.drop-zone--over {
+    border-style: solid;
+}
+
+.drop-zone__input {
+    display: none;
+}
+
+.drop-zone__thumb {
+    padding: 12px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.75);
+    text-align: center;
+    vertical-align: middle;
+}
+
+#upload-button {
+    margin-top: 10px;
+	background: #2684ff;
+	border-radius: 1.25em;
+	border: none;
+	color: #fff;
+	cursor: pointer;
+	padding: 0.5em 1em;
+	position: relative;
+	text-align: center;
+	transition: all 0.1s linear;
+	width: 6em;
+	-webkit-tap-highlight-color: #0000;
+	-webkit-appearance: none;
+	appearance: none;
+}
+
+#speakersList {
+    padding: 0;
+    list-style-type: none;
+    overflow-y: scroll;
+    flex-grow: 1;
+}
+
+#speakersList li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #EEEEEE;
+    border-radius: 12px;
+    font-size: 16px;
+    padding: 10px;
+    margin-bottom: 5px;
+}
+
+.delete-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.play-button {
+    background: #dbdbdb;
+    border-radius: 6px;
+    width: 40px;
+    height: 25px;
+    border: none;
+    cursor: pointer;
+}
+
+.play-button:hover {
+    background: #c7c7c7;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.info {
+    background-color: #2684ff;
+    border-radius: 8px;
+    font-size: 15.5px;
+    padding: 12px;
+    color: #2b2f36;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+}
+
+.info #text {
+    margin-left: 8px;
+    margin-top: 5px;
+}
+
+.info #header {
+    margin: 0px;
+    margin-top: -2px;
+    margin-left: 8px;
+}
+
+@media screen and (max-width:961px) {
+
+    .wrapper {
+        width: 80%;
+        height: 90%;
+    }
+}

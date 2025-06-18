@@ -1,83 +1,47 @@
-import json
 import logging
 import os
-import torch
+from typing import Optional
 
-from pydantic import BaseSettings
+from pydantic import Field
+
+from pydantic_settings import BaseSettings
+
+from app.const import speakers_directory, voice_extension
+from app.files import scan_files_for_names
 
 logger = logging.getLogger('uvicorn')
-models_directory = './models/'
-audios_directory = './audios/'
-version = '2.0.0'
+root_dir = os.path.dirname(os.path.abspath(__file__))
+version = '1.0.0'
 
 
 class Settings(BaseSettings):
-    number_of_threads: int = 4
-    language: str = 'ru'
-    sample_rate: int = 48000
-    sox_param: str = ''
-    ha_fix: bool = False
+    logger.info(f'Current version: {version}')
+    logger.info(f'Getting service configuration...')
 
-    silero_settings = {
-        'ru': {
-            'model_link': 'https://models.silero.ai/models/tts/ru/v4_ru.pt',
-            'model_name': 'ru_model.pt',
-            'speakers': [
-                'aidar', 'baya', 'kseniya', 'xenia', 'eugene', 'random'
-            ]
-        },
-        'uk': {
-            'model_link': 'https://models.silero.ai/models/tts/ua/v3_ua.pt',
-            'model_name': 'uk_model.pt',
-            'speakers': [
-                'mykyta', 'random'
-            ]
-        },
-        'multi': {
-            'model_link': 'https://models.silero.ai/models/tts/multi/v2_multi.pt',
-            'model_name': 'multi_model.pt',
-            'speakers': [
-                'irina', 'random'
-            ]
-        }
-    }
+    auto_detect_language: bool = False
+    remove_dots_at_the_end: bool = True
+    voice_tts_errors: bool = True
+    base_model: str = "AstraMindAI/xttsv2"
+    gpt_model: str = "AstraMindAI/xtts2-gpt"
+    max_text_parts_count: int = 8
+
+    xtts_speakers: Optional[list[str]] = Field(None)
 
     class Config:
         env_file = ".env"
 
 
+settings = Settings()
+
+
 def settings_checker():
-    settings = Settings()
+    if not os.path.exists(speakers_directory):
+        os.mkdir(f"./{speakers_directory}/")
 
-    if settings.number_of_threads <= 0:
-        logger.error('Invalid settings: number_of_threads can\'t be lower than zero')
-        exit(-1)
+    settings.xtts_speakers = scan_files_for_names(speakers_directory, voice_extension)
 
-    if settings.language not in ['uk', 'ru', 'multi']:
-        logger.error(f'Invalid settings: language {settings.language} unsupported')
-        exit(-1)
-
-    if settings.sample_rate not in [8000, 24000, 48000]:
-        logger.error(f'Invalid settings: sample_rate {settings.sample_rate} unsupported')
-        exit(-1)
-
-    settings_dict = settings.dict()
-
-    del settings_dict['silero_settings']
-
-    if not os.path.exists(models_directory):
-        os.mkdir(models_directory)
-
-    model_name = settings.silero_settings[settings.language]['model_name']
-    local_file = models_directory + model_name
-
-    if not os.path.exists(local_file):
-        url = settings.silero_settings[settings.language]['model_link']
-        logger.info(f'Download silero model {local_file}')
-        torch.hub.download_url_to_file(url, local_file)
-
-    logger.info(f'Current version: {version}')
-    logger.info(f'Settings: {json.dumps(settings_dict)}')
+    logger.info(f'Found voices: {settings.xtts_speakers}')
+    logger.info(f'Current xtts model is: {settings.base_model}')
 
 
 settings_checker()
