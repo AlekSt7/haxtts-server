@@ -1,8 +1,8 @@
 build:
-	docker build -t navatusein/silero-tts-service:$(v) -t navatusein/silero-tts-service:latest .
+	docker build -t alekst7/haxtts-service:$(v) -t alekst7/haxtts-service:latest -f dockerfile .
 push:
-	docker push navatusein/silero-tts-service -a
+	docker push alekst7/haxtts-service -a
 run:
-	docker run -p 9898:9898 -e LANGUAGE=uk -m 1g --rm --name tts_silero navatusein/silero-tts-service
+	docker run -p 9898:9898 --gpus all --name hax-tts-service alekst7/haxtts-service
 dev:
 	make build && make run

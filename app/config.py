@@ -21,9 +21,11 @@ class Settings(BaseSettings):
     auto_detect_language: bool = False
     remove_dots_at_the_end: bool = True
     voice_tts_errors: bool = True
+    split_by_sentences: bool = False
+    sample_rate: int = 16000
     base_model: str = "AstraMindAI/xttsv2"
     gpt_model: str = "AstraMindAI/xtts2-gpt"
-    max_text_parts_count: int = 8
+    max_text_parts_count: int = 32
 
     xtts_speakers: Optional[list[str]] = Field(None)
 

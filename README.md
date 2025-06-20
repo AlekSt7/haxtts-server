@@ -53,7 +53,8 @@ to refine it, maybe someday I can add support for [Wyoming Protocol]).<br>
 <a id="start-recommendation"></a>
 ## Startup recommendations
 
-The Docker container needs about 6gb of RAM to work, and a graphics adapter with VRAM of at least 4gb is <b>required</b> (I personally tested on RTX3060).
+The Docker container needs about 6gb of RAM to work, and a graphics adapter with VRAM of at least 4gb is <b>required</b> 
+(I personally tested on RTX3060).
 The server will not run on the CPU.</br>
 For a quick start, see [server installation](#server-install) and [configuration in Home Assistant](#ha-configure)
 
@@ -168,10 +169,10 @@ Link to the official base GPT-model XTTS from Auralis: https://huggingface.co/As
 
 Parallelism `MAX_TEXT_PARTS_COUNT`:
 ```yaml
-MAX_TEXT_PARTS_COUNT: 8
+MAX_TEXT_PARTS_COUNT: 32
 ```
-Default: `8`</br>
-Reducing this value will save video memory, increasing it will reduce the synthesis time <b>only on large texts</b>.
+Default: `32`</br>
+Reducing this value will save video memory, increasing it will reduce the synthesis time on large texts</b>.
 The default is the optimal value, selected empirically.<br>
 For performance, the server can synthesize speech in parallel in several threads.
 This is ensured by dividing a large text into separate parts.</br>
@@ -179,6 +180,30 @@ The `MAX_TEXT_PARTS_COUNT` parameter limits the maximum number of text parts.
 If the parameter specifies the number 8, then the text, for example, consisting of 15 sentences, will be divided into 8 parts, where 7 parts will have 2 sentences each,
 and the last part will have one sentence. Accordingly, the text will be synthesized in eight threads. As a result, there will be 8 audio files, which will
 combine into one output audio.
+</br>
+
+Sentence splitting `SPLIT_BY_SENTENCES`:
+```yaml
+SPLIT_BY_SENTENCES: False
+```
+Default: `False`</br>
+Determines whether the text will be split into complete sentences or simply by delimiters during parallel speech synthesis.
+The text delimiters are the following characters: `;:,.!?`.</br>
+If the function is disabled `False`, the text will be split by delimiters, which guarantees an even greater increase in performance
+than when splitting into complete sentences, but there is also a chance that sometimes the TTS model may put the wrong intonation where there are commas
+or other punctuation marks, this is not very critical. In general, I advise disabling sentence splitting.
+</br>
+
+Sampling rate `SAMPLE_RATE`:
+```yaml
+SAMPLE_RATE: 16000
+```
+Default: `16000`</br>
+Sets the sampling rate of the `load_sample_rate` parameter in the Auralis engine.
+It seems that this should affect the quality of the output sound, but I did not notice the difference between 16000 and 48000.
+But the output at 16000 works faster on average by 0.5-1 seconds.</br>
+Let this parameter just be in case.
+</br>
 
 <a id="ha-configure"></a>
 ## Configuration in Home Assistant

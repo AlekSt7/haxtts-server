@@ -132,8 +132,5 @@ dmypy.json
 *.pt
 models/
 
-# Audio files
-audios/
-
 #PyCharmFiles
 /.idea

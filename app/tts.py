@@ -19,7 +19,7 @@ logger.info("Trying to load xtts model...")
 tts = TTS().from_pretrained(settings.base_model, gpt_model=settings.gpt_model)
 
 
-async def generate_speech(text_parts: list[str], speaker: str, language: str) -> io.BytesIO:
+async def generate_speech(text_parts: list[str], speaker: str, language: str, sample_rate: int) -> io.BytesIO:
     logger.info(f'Inference xtts model, language is {language}')
 
     # Create audio buffer
@@ -31,7 +31,7 @@ async def generate_speech(text_parts: list[str], speaker: str, language: str) ->
             text=i,
             speaker_files=[f'{speakers_directory}/{speaker}{voice_extension}'],
             language=language,
-            load_sample_rate=48000
+            load_sample_rate=sample_rate
         ) for i in text_parts
     ]
 
@@ -72,12 +72,18 @@ async def get_audio_in_bytes(text: str, speaker: str, language: str) -> io.Bytes
     # Prepare data for tts
     auralis_language = 'auto' if settings.auto_detect_language else map_mary_tts_to_xtts_language_codes(language)
     text = normalize_text(text)
-    text_parts = get_text_parts(text, settings.max_text_parts_count)
+    text_parts = get_text_parts(text=text,
+                                parts_count=settings.max_text_parts_count,
+                                is_split_by_sentences=settings.split_by_sentences,
+                                remove_dots_at_the_end=settings.remove_dots_at_the_end)
 
-    logger.info(f'Text parts to process: {text_parts}, size: {len(text_parts)}')
+    logger.info(f'Text parts to process: {text_parts}, text parts count: {len(text_parts)},  sample rate: {settings.sample_rate}')
 
     # Run tts
-    result = await generate_speech(text_parts=text_parts, speaker=speaker, language=auralis_language)
+    result = await generate_speech(text_parts=text_parts,
+                                   speaker=speaker,
+                                   language=auralis_language,
+                                   sample_rate=settings.sample_rate)
 
     elapsed_time = time.time() - start_time
     logger.info(f'Time spent on the process: {elapsed_time}')

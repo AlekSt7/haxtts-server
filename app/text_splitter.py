@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
 
-from app.config import settings
-
 alphabets = "([A-Za-z])"
 prefixes = "(Mr|St|Mrs|Ms|Dr)[.]"
 suffixes = "(Inc|Ltd|Jr|Sr|Co)"
@@ -13,12 +11,13 @@ digits = "([0-9])"
 multiple_dots = r'\.{2,}'
 
 
-def get_text_parts(text: str, parts_count: int) -> list[str]:
-    result = split_by_sentences(text)
+def get_text_parts(text: str, parts_count: int, is_split_by_sentences: bool, remove_dots_at_the_end) -> list[str]:
+    if parts_count == 1: return [text]
+    result = split_by_sentences(text) if is_split_by_sentences else split_by_delimiters(text)
     if len(result) > parts_count:
         result = combine_into_parts(result, parts_count)
 
-    if settings.remove_dots_at_the_end:
+    if remove_dots_at_the_end:
         for i in range(len(result)):
             result[i] = remove_dot(result[i])
 
@@ -65,6 +64,31 @@ def split_by_sentences(text: str) -> list[str]:
     sentences = [s.strip() for s in sentences]
     if sentences and not sentences[-1]: sentences = sentences[:-1]
     return sentences
+
+
+def split_by_delimiters(text: str) -> list[str]:
+    """
+    The function splits strings into substrings by delimiters, preserving the delimiters in the strings
+
+    :param text: text to be split by delimiters
+    :type text: str
+
+    :return: list of substrings separated by delimiters
+    :rtype: list[str]
+    """
+    substrings = re.split(r'([;:,.!?])', text)
+
+    # Combining text and separators
+    result = []
+    for i in range(0, len(substrings) - 1, 2):
+        # Check if there is a next element (separator)
+        if i + 1 < len(substrings):
+            result.append(substrings[i] + substrings[i + 1].strip())
+        else:
+            result.append(substrings[i].strip())
+
+    # Remove empty lines
+    return [s for s in result if s]
 
 
 def combine_into_parts(sentences: list[str], parts_count: int) -> list[str]:
