@@ -1,6 +1,7 @@
 import gc
 import logging
 import json
+import os.path
 
 from fastapi import APIRouter, Request, Depends, UploadFile, File
 from fastapi.responses import HTMLResponse, PlainTextResponse
@@ -10,7 +11,7 @@ from functools import lru_cache
 from starlette.responses import StreamingResponse, FileResponse, JSONResponse
 
 from app.config import Settings, settings
-from app.const import voice_extension, speakers_directory
+from app.const import voice_extension, speakers_directory, static_dir
 from app.files import save_file_to_speakers_directory, delete_file_from_speakers_directory, scan_files_for_names
 from app.tts import get_audio_in_bytes
 
@@ -36,6 +37,11 @@ def get_settings():
 @router.get('/')
 async def index():
     return {'status': 'work'}
+
+
+@router.get("/dashboard", response_class=HTMLResponse)
+async def dashboard():
+    return FileResponse(os.path.join(static_dir, "index.html"))
 
 
 # tts

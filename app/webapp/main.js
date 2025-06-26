@@ -3,7 +3,7 @@
 
         // Function to get the list of files
         async function fetchFiles() {
-            const response = await fetch(`${apiUrl}/available-voices`);
+            const response = await fetch(`/available-voices`);
             const files = await response.json();
             const speakersList = document.getElementById('speakersList');
             speakersList.innerHTML = '';
@@ -47,7 +47,7 @@
                 const formData = new FormData();
                 formData.append('file', fileInput.files[0]);
 
-                await fetch(`${apiUrl}/upload`, {
+                await fetch(`/upload`, {
                     method: 'POST',
                     body: formData,
                 });
@@ -67,7 +67,7 @@
                 stopFile();
             }
             if(stop) return;
-            currentFileForPlaying = new Audio(`${apiUrl}/files/${fileName}`);
+            currentFileForPlaying = new Audio(`/files/${fileName}`);
             currentFileForPlaying.play();
             currentFileNameForPlaying = fileName
             changePlayButtonState(true, fileName);
@@ -96,7 +96,7 @@
 
         // Function to delete a file
         async function deleteFile(filename) {
-            await fetch(`${apiUrl}/files/${filename}`, {
+            await fetch(`/files/${filename}`, {
                 method: 'DELETE',
             });
             fetchFiles(); // Refresh the file list after deletion

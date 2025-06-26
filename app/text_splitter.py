@@ -11,16 +11,22 @@ digits = "([0-9])"
 multiple_dots = r'\.{2,}'
 
 
-def get_text_parts(text: str, parts_count: int, is_split_by_sentences: bool, remove_dots_at_the_end) -> list[str]:
-    if parts_count == 1: return [text]
+def get_text_parts(text: str, parts_count: int, is_split_by_sentences: bool, remove_dots_at_the_end: bool) -> list[str]:
+    if parts_count == 1: return [clear_text(text, remove_dots_at_the_end)]
     result = split_by_sentences(text) if is_split_by_sentences else split_by_delimiters(text)
     if len(result) > parts_count:
         result = combine_into_parts(result, parts_count)
 
-    if remove_dots_at_the_end:
-        for i in range(len(result)):
-            result[i] = remove_dot(result[i])
+    for i in range(len(result)):
+        result[i] = clear_text(result[i], remove_dots_at_the_end)
 
+    return result
+
+
+def clear_text(text: str, remove_dots_at_the_end: bool) -> str:
+    result = clear_end_of_text(text)
+    if remove_dots_at_the_end:
+        result = remove_dot(result)
     return result
 
 
@@ -68,7 +74,7 @@ def split_by_sentences(text: str) -> list[str]:
 
 def split_by_delimiters(text: str) -> list[str]:
     """
-    The function splits strings into substrings by delimiters, preserving the delimiters in the strings
+    The function splits strings into substrings by delimiters
 
     :param text: text to be split by delimiters
     :type text: str
@@ -76,19 +82,8 @@ def split_by_delimiters(text: str) -> list[str]:
     :return: list of substrings separated by delimiters
     :rtype: list[str]
     """
-    substrings = re.split(r'([;:,.!?])', text)
-
-    # Combining text and separators
-    result = []
-    for i in range(0, len(substrings) - 1, 2):
-        # Check if there is a next element (separator)
-        if i + 1 < len(substrings):
-            result.append(substrings[i] + substrings[i + 1].strip())
-        else:
-            result.append(substrings[i].strip())
-
-    # Remove empty lines
-    return [s for s in result if s]
+    text = text.rstrip(";:,.!?")
+    return re.split(r'\.\.\.|[;:,.!?]', text)
 
 
 def combine_into_parts(sentences: list[str], parts_count: int) -> list[str]:
@@ -130,6 +125,13 @@ def combine_into_parts(sentences: list[str], parts_count: int) -> list[str]:
         start_index = end_index
 
     return result
+
+
+def clear_end_of_text(text: str) -> str:
+    """
+    Return a copy of the string with "trash trailing characters" removed.
+    """
+    return text.rstrip(";:,@{}#&%$№/''…")
 
 
 def remove_dot(string: str) -> str:

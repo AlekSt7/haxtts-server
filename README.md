@@ -32,7 +32,7 @@ Pre-trained custom models are also supported (currently only links to Hugging Fa
 The models themselves are multilingual, so the choice of language in the Mary TTS integration only affects the accent when pronouncing speech.
 The models also support cloning any voices (both male and female).</br>
 To select a voice, you need to set the `voice` parameter in the Mary TTS configuration to the name of the wav file with the recorded voice sample, see [Configuration in Home Assistant](#ha-configure).
-It is also possible to add or remove your own wav files with voice samples. The voice control panel is available at http://your-address:9898/dashboard/index.html. Only .wav files are supported.</br>
+It is also possible to add or remove your own wav files with voice samples. The voice control panel is available at http://server-address:9898/dashboard. Only .wav files are supported.</br>
 
 Below is a table with supported languages:
 
