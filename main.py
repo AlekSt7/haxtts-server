@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 
-from app.const import static_dir
+from app.const import static_dir, port
 from app.handlers import router
 from app.logger import LogConfig
 
@@ -24,4 +24,4 @@ def get_application() -> FastAPI:
 
 if __name__ == '__main__':
     app = get_application()
-    uvicorn.run(app, host='0.0.0.0', port=9898, log_config=LogConfig().model_dump())
+    uvicorn.run(app, host='0.0.0.0', port=port, log_config=LogConfig().model_dump())
